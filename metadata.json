@@ -1,0 +1,7 @@
+{
+  "name": "Mô phỏng Khúc xạ ánh sáng (KHTN 9)",
+  "description": "Mô phỏng thí nghiệm ảo Khúc xạ ánh sáng tương tác trực quan, định luật Snell, thước đo góc, góc tới hạn, câu hỏi thử thách và công cụ AI tạo bài tập phân hóa theo chuẩn KHTN 9.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
