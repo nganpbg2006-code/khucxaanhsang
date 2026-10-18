@@ -123,10 +123,10 @@ export const InteractiveTheory: React.FC<InteractiveTheoryProps> = ({
               {/* Step 1: Input values */}
               <div className="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800 text-slate-300 flex flex-wrap items-center justify-between gap-2">
                 <span>
-                  n₁ = <strong className="text-cyan-400">{physics.n1.toFixed(2)}</strong> ({medium1.nameVi})
+                  MT tới ({physics.incidentMedium === 1 ? 'MT 1' : 'MT 2'}): <strong className="text-cyan-400">{physics.nIncident.toFixed(2)}</strong>
                 </span>
                 <span>
-                  n₂ = <strong className="text-emerald-400">{physics.n2.toFixed(2)}</strong> ({medium2.nameVi})
+                  MT khúc xạ ({physics.incidentMedium === 1 ? 'MT 2' : 'MT 1'}): <strong className="text-emerald-400">{physics.nRefracted.toFixed(2)}</strong>
                 </span>
                 <span>
                   i = <strong className="text-cyan-400">{physics.incidentAngleDeg.toFixed(1)}°</strong>
@@ -139,10 +139,10 @@ export const InteractiveTheory: React.FC<InteractiveTheoryProps> = ({
                   {lang === 'vi' ? '1. Định luật Snell:' : '1. Snell\'s Law:'}
                 </div>
                 <div className="text-slate-200 pl-2">
-                  n₁ · sin(i) = n₂ · sin(r)
+                  n_tới · sin(i) = n_khúc_xạ · sin(r)
                 </div>
                 <div className="text-cyan-400 pl-2">
-                  {physics.n1.toFixed(2)} · sin({physics.incidentAngleDeg.toFixed(1)}°) = {physics.n2.toFixed(2)} · sin(r)
+                  {physics.nIncident.toFixed(2)} · sin({physics.incidentAngleDeg.toFixed(1)}°) = {physics.nRefracted.toFixed(2)} · sin(r)
                 </div>
               </div>
 
@@ -152,10 +152,10 @@ export const InteractiveTheory: React.FC<InteractiveTheoryProps> = ({
                   {lang === 'vi' ? '2. Rút ra sin(r):' : '2. Solve for sin(r):'}
                 </div>
                 <div className="text-slate-200 pl-2">
-                  sin(r) = (n₁ · sin(i)) / n₂ = ({physics.n1.toFixed(2)} · {sinI.toFixed(4)}) / {physics.n2.toFixed(2)}
+                  sin(r) = ({physics.nIncident.toFixed(2)} · {sinI.toFixed(4)}) / {physics.nRefracted.toFixed(2)}
                 </div>
                 <div className="text-emerald-400 pl-2 font-bold">
-                  sin(r) = {sinRValue.toFixed(4)}
+                  sin(r) = {((physics.nIncident * sinI) / physics.nRefracted).toFixed(4)}
                 </div>
               </div>
 
@@ -167,7 +167,7 @@ export const InteractiveTheory: React.FC<InteractiveTheoryProps> = ({
                     {lang === 'vi' ? 'PHẢN XẠ TOÀN PHẦN (TIR)' : 'TOTAL INTERNAL REFLECTION'}
                   </div>
                   <p className="text-[11px] text-amber-200/90 font-sans leading-relaxed">
-                    Vì sin(r) = {sinRValue.toFixed(4)} &gt; 1.0 (hoặc góc tới i = {physics.incidentAngleDeg.toFixed(1)}° &gt; i<sub>gh</sub> = {physics.criticalAngleDeg?.toFixed(1)}°), tia sáng không thể khúc xạ vào môi trường 2 mà bị phản xạ toàn phần trở lại môi trường 1!
+                    Vì sin(r) &gt; 1.0 (hoặc góc tới i = {physics.incidentAngleDeg.toFixed(1)}° &gt; i<sub>gh</sub> = {physics.criticalAngleDeg?.toFixed(1)}°), tia sáng không thể khúc xạ sang môi trường đối diện mà bị phản xạ toàn phần trở lại môi trường tới!
                   </p>
                 </div>
               ) : (
@@ -176,7 +176,7 @@ export const InteractiveTheory: React.FC<InteractiveTheoryProps> = ({
                     {lang === 'vi' ? '3. Góc khúc xạ kết quả:' : '3. Resulting Refracted Angle:'}
                   </div>
                   <div className="text-emerald-300 font-bold text-sm">
-                    r = arcsin({sinRValue.toFixed(4)}) ≈{' '}
+                    r = arcsin({((physics.nIncident * sinI) / physics.nRefracted).toFixed(4)}) ≈{' '}
                     <span className="text-base text-emerald-400 underline decoration-emerald-500/50">
                       {physics.refractedAngleDeg?.toFixed(1)}°
                     </span>

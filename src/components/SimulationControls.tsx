@@ -16,16 +16,17 @@ import {
   Gauge,
   Sliders,
   Sparkles,
-  Activity,
+  RotateCw,
   Check,
+  Edit3,
 } from 'lucide-react';
 
 interface SimulationControlsProps {
   medium1: MediumInfo;
   medium2: MediumInfo;
-  customN1: number;
-  customN2: number;
-  incidentAngle: number;
+  n1Value: number;
+  n2Value: number;
+  laserAngle: number; // 0 to 360
   laserActive: boolean;
   laserConfig: LaserConfig;
   beamMode: 'ray' | 'wave';
@@ -35,10 +36,12 @@ interface SimulationControlsProps {
   showIntensityProbe: boolean;
   physics: RefractionResult;
   lang: Language;
-  onMedium1Change: (type: MediumType, customN?: number) => void;
-  onMedium2Change: (type: MediumType, customN?: number) => void;
+  onMedium1PresetChange: (type: MediumType) => void;
+  onMedium2PresetChange: (type: MediumType) => void;
+  onN1Change: (n: number) => void;
+  onN2Change: (n: number) => void;
   onSwapMedia: () => void;
-  onAngleChange: (angle: number) => void;
+  onLaserAngleChange: (angle: number) => void;
   onLaserActiveChange: (active: boolean) => void;
   onLaserColorChange: (color: LaserColor) => void;
   onBeamModeChange: (mode: 'ray' | 'wave') => void;
@@ -46,15 +49,15 @@ interface SimulationControlsProps {
   onToggleNormal: () => void;
   onToggleAngles: () => void;
   onToggleIntensityProbe: () => void;
-  onApplyPreset: (n1: number, n2: number, i: number, m1: MediumType, m2: MediumType) => void;
+  onApplyPreset: (n1: number, n2: number, laserAngle: number, m1?: MediumType, m2?: MediumType) => void;
 }
 
 export const SimulationControls: React.FC<SimulationControlsProps> = ({
   medium1,
   medium2,
-  customN1,
-  customN2,
-  incidentAngle,
+  n1Value,
+  n2Value,
+  laserAngle,
   laserActive,
   laserConfig,
   beamMode,
@@ -64,10 +67,12 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   showIntensityProbe,
   physics,
   lang,
-  onMedium1Change,
-  onMedium2Change,
+  onMedium1PresetChange,
+  onMedium2PresetChange,
+  onN1Change,
+  onN2Change,
   onSwapMedia,
-  onAngleChange,
+  onLaserAngleChange,
   onLaserActiveChange,
   onLaserColorChange,
   onBeamModeChange,
@@ -80,204 +85,300 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
   const t = translations[lang];
 
   return (
-    <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-4 md:p-5 shadow-xl space-y-5">
-      {/* Media Selection Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
-        {/* Medium 1 (Top) */}
-        <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: medium1.color }} />
-              {t.controls.medium1}
-            </label>
-            <span className="text-xs font-mono font-bold text-cyan-400">
-              n₁ = {medium1.n.toFixed(2)}
+    <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-5 md:p-6 shadow-xl space-y-6">
+      {/* 1. MEDIA SELECTION & DIRECT REFRACTIVE INDEX INPUT */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <Edit3 className="w-4 h-4 text-cyan-400" />
+            <span>
+              {lang === 'vi'
+                ? 'Cài đặt Môi trường & Nhập chiết suất n'
+                : 'Media Settings & Direct Refractive Index (n)'}
             </span>
-          </div>
+          </h3>
+          <span className="text-[11px] text-slate-400">
+            {lang === 'vi' ? 'Có thể chọn mẫu hoặc nhập số trực tiếp' : 'Select preset or type index directly'}
+          </span>
+        </div>
 
-          <select
-            value={medium1.id}
-            onChange={(e) => onMedium1Change(e.target.value as MediumType)}
-            className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
-          >
-            {Object.values(MEDIA_PRESETS).map((m) => (
-              <option key={`m1-${m.id}`} value={m.id}>
-                {lang === 'vi' ? m.nameVi : m.nameEn} (n = {m.n.toFixed(2)})
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4">
+          {/* MEDIUM 1 (TOP) */}
+          <div className="bg-slate-950/80 p-4 rounded-2xl border-2 border-cyan-500/30 space-y-3 shadow-lg">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: medium1.color }} />
+                <span>{lang === 'vi' ? 'Môi trường 1 (Nửa trên)' : 'Medium 1 (Top Half)'}</span>
+              </label>
 
-          {medium1.id === 'custom' && (
-            <div className="pt-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>1.00</span>
-                <span className="text-cyan-400 font-mono font-bold">{customN1.toFixed(3)}</span>
-                <span>2.60</span>
+              {physics.incidentMedium === 1 && (
+                <span className="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-500/40 font-bold uppercase">
+                  {lang === 'vi' ? 'Nguồn tới' : 'Incident'}
+                </span>
+              )}
+            </div>
+
+            {/* Preset Selector */}
+            <select
+              value={medium1.id}
+              onChange={(e) => onMedium1PresetChange(e.target.value as MediumType)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-medium focus:outline-none focus:border-cyan-400"
+            >
+              {Object.values(MEDIA_PRESETS).map((m) => (
+                <option key={`m1-${m.id}`} value={m.id}>
+                  {lang === 'vi' ? m.nameVi : m.nameEn} (n = {m.n.toFixed(2)})
+                </option>
+              ))}
+            </select>
+
+            {/* Direct Number Input for n1 */}
+            <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-300">
+                  {lang === 'vi' ? 'Nhập chiết suất n₁:' : 'Type index n₁:'}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1.000"
+                    max="3.000"
+                    step="0.005"
+                    value={n1Value}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) onN1Change(Math.max(1.0, Math.min(3.0, val)));
+                    }}
+                    className="w-20 bg-slate-950 border border-cyan-500/50 rounded-lg px-2.5 py-1 text-right font-mono font-bold text-cyan-300 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  />
+                </div>
               </div>
+
+              {/* Slider for n1 */}
               <input
                 type="range"
-                min="1.00"
-                max="2.60"
+                min="1.000"
+                max="3.000"
                 step="0.01"
-                value={customN1}
-                onChange={(e) => onMedium1Change('custom', parseFloat(e.target.value))}
+                value={n1Value}
+                onChange={(e) => onN1Change(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
               />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>1.00</span>
+                <span>2.00</span>
+                <span>3.00</span>
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Swap Media Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={onSwapMedia}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-400 border border-slate-700/60 hover:border-cyan-500/50 transition shadow-md group"
-            title={`${t.controls.swapMedia} (Tính thuận nghịch của chiều truyền ánh sáng)`}
-          >
-            <ArrowLeftRight className="w-4 h-4 transition-transform group-hover:rotate-180" />
-          </button>
-        </div>
-
-        {/* Medium 2 (Bottom) */}
-        <div className="bg-slate-950/70 p-3.5 rounded-xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: medium2.color }} />
-              {t.controls.medium2}
-            </label>
-            <span className="text-xs font-mono font-bold text-emerald-400">
-              n₂ = {medium2.n.toFixed(2)}
-            </span>
           </div>
 
-          <select
-            value={medium2.id}
-            onChange={(e) => onMedium2Change(e.target.value as MediumType)}
-            className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
-          >
-            {Object.values(MEDIA_PRESETS).map((m) => (
-              <option key={`m2-${m.id}`} value={m.id}>
-                {lang === 'vi' ? m.nameVi : m.nameEn} (n = {m.n.toFixed(2)})
-              </option>
-            ))}
-          </select>
+          {/* Swap Media Button */}
+          <div className="flex justify-center">
+            <button
+              onClick={onSwapMedia}
+              className="p-3 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-400 border border-slate-700 hover:border-cyan-500/50 transition shadow-lg group"
+              title={`${t.controls.swapMedia} (Tính thuận nghịch của ánh sáng)`}
+            >
+              <ArrowLeftRight className="w-5 h-5 transition-transform group-hover:rotate-180" />
+            </button>
+          </div>
 
-          {medium2.id === 'custom' && (
-            <div className="pt-1">
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>1.00</span>
-                <span className="text-emerald-400 font-mono font-bold">{customN2.toFixed(3)}</span>
-                <span>2.60</span>
+          {/* MEDIUM 2 (BOTTOM) */}
+          <div className="bg-slate-950/80 p-4 rounded-2xl border-2 border-emerald-500/30 space-y-3 shadow-lg">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: medium2.color }} />
+                <span>{lang === 'vi' ? 'Môi trường 2 (Nửa dưới)' : 'Medium 2 (Bottom Half)'}</span>
+              </label>
+
+              {physics.incidentMedium === 2 && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/40 font-bold uppercase">
+                  {lang === 'vi' ? 'Nguồn tới' : 'Incident'}
+                </span>
+              )}
+            </div>
+
+            {/* Preset Selector */}
+            <select
+              value={medium2.id}
+              onChange={(e) => onMedium2PresetChange(e.target.value as MediumType)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-medium focus:outline-none focus:border-emerald-400"
+            >
+              {Object.values(MEDIA_PRESETS).map((m) => (
+                <option key={`m2-${m.id}`} value={m.id}>
+                  {lang === 'vi' ? m.nameVi : m.nameEn} (n = {m.n.toFixed(2)})
+                </option>
+              ))}
+            </select>
+
+            {/* Direct Number Input for n2 */}
+            <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-slate-300">
+                  {lang === 'vi' ? 'Nhập chiết suất n₂:' : 'Type index n₂:'}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1.000"
+                    max="3.000"
+                    step="0.005"
+                    value={n2Value}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val)) onN2Change(Math.max(1.0, Math.min(3.0, val)));
+                    }}
+                    className="w-20 bg-slate-950 border border-emerald-500/50 rounded-lg px-2.5 py-1 text-right font-mono font-bold text-emerald-300 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  />
+                </div>
               </div>
+
+              {/* Slider for n2 */}
               <input
                 type="range"
-                min="1.00"
-                max="2.60"
+                min="1.000"
+                max="3.000"
                 step="0.01"
-                value={customN2}
-                onChange={(e) => onMedium2Change('custom', parseFloat(e.target.value))}
+                value={n2Value}
+                onChange={(e) => onN2Change(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
               />
+              <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                <span>1.00</span>
+                <span>2.00</span>
+                <span>3.00</span>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Incident Angle (i) Slider & Quick Step Buttons */}
-      <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
-        <div className="flex items-center justify-between">
+      {/* 2. 360-DEGREE ROTATION CONTROLLER */}
+      <div className="bg-slate-950/80 p-4 md:p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-semibold text-slate-200">
-              {t.controls.incidentAngle}
+            <RotateCw className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+              {lang === 'vi' ? 'Xoay tia tới 360° (Laser Rotation)' : '360° Laser Rotation'}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              min="0"
-              max="85"
-              step="0.5"
-              value={incidentAngle}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                if (!isNaN(val)) onAngleChange(Math.max(0, Math.min(85, val)));
-              }}
-              className="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-right font-mono font-bold text-cyan-400 text-sm focus:outline-none focus:border-cyan-500"
-            />
-            <span className="font-mono text-sm text-cyan-400 font-bold">°</span>
+
+          <div className="flex items-center gap-3">
+            {/* Display Angle of incidence i */}
+            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400">Góc tới i:</span>
+              <span className="font-mono text-sm font-bold text-cyan-400">
+                {physics.incidentAngleDeg.toFixed(1)}°
+              </span>
+            </div>
+
+            {/* Display full 360 circle angle */}
+            <div className="bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 flex items-center gap-1.5">
+              <span className="text-[11px] text-slate-400">Vòng xoay 360°:</span>
+              <input
+                type="number"
+                min="0"
+                max="360"
+                step="1"
+                value={Math.round(laserAngle)}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val)) onLaserAngleChange(((val % 360) + 360) % 360);
+                }}
+                className="w-14 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-right font-mono font-bold text-slate-200 text-xs focus:outline-none"
+              />
+              <span className="font-mono text-slate-400 text-xs">°</span>
+            </div>
           </div>
         </div>
 
-        {/* Range Slider */}
-        <input
-          type="range"
-          min="0"
-          max="85"
-          step="0.5"
-          value={incidentAngle}
-          onChange={(e) => onAngleChange(parseFloat(e.target.value))}
-          className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-        />
-
-        {/* Quick Stepper Buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onAngleChange(Math.max(0, incidentAngle - 5))}
-              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 border border-slate-800"
-            >
-              -5°
-            </button>
-            <button
-              onClick={() => onAngleChange(Math.max(0, incidentAngle - 1))}
-              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 border border-slate-800"
-            >
-              -1°
-            </button>
+        {/* 360-Degree Continuous Slider */}
+        <div className="space-y-1">
+          <input
+            type="range"
+            min="0"
+            max="359.5"
+            step="0.5"
+            value={laserAngle}
+            onChange={(e) => onLaserAngleChange(parseFloat(e.target.value))}
+            className="w-full h-2.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 shadow-inner"
+          />
+          <div className="flex justify-between text-[10px] text-slate-500 font-mono px-1">
+            <span>0° (Trên N)</span>
+            <span>90° (Mặt S')</span>
+            <span>180° (Dưới N')</span>
+            <span>270° (Mặt S)</span>
+            <span>360°</span>
           </div>
+        </div>
 
-          <div className="flex items-center gap-1 text-slate-400 font-mono">
-            <span>0°</span>
-            <span className="text-slate-600">|</span>
-            <span>30°</span>
-            <span className="text-slate-600">|</span>
-            <span>45°</span>
-            <span className="text-slate-600">|</span>
-            <span>60°</span>
-            <span className="text-slate-600">|</span>
-            <span>85°</span>
-          </div>
+        {/* Quadrant Quick Presets */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          {/* Top-Left Quadrant */}
+          <button
+            onClick={() => onLaserAngleChange(330)}
+            className={`p-2 rounded-xl border text-xs font-semibold transition text-left ${
+              laserAngle >= 270 && laserAngle <= 360
+                ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="text-[10px] uppercase font-bold text-cyan-400">Từ MT 1 (Trên - Trái)</div>
+            <div className="font-mono text-xs text-slate-200">θ = 330° (i = 30°)</div>
+          </button>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onAngleChange(Math.min(85, incidentAngle + 1))}
-              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 border border-slate-800"
-            >
-              +1°
-            </button>
-            <button
-              onClick={() => onAngleChange(Math.min(85, incidentAngle + 5))}
-              className="px-2 py-1 bg-slate-900 hover:bg-slate-800 rounded text-slate-400 hover:text-slate-200 border border-slate-800"
-            >
-              +5°
-            </button>
-          </div>
+          {/* Top-Right Quadrant */}
+          <button
+            onClick={() => onLaserAngleChange(45)}
+            className={`p-2 rounded-xl border text-xs font-semibold transition text-left ${
+              laserAngle >= 0 && laserAngle <= 90
+                ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="text-[10px] uppercase font-bold text-cyan-400">Từ MT 1 (Trên - Phải)</div>
+            <div className="font-mono text-xs text-slate-200">θ = 45° (i = 45°)</div>
+          </button>
+
+          {/* Bottom-Right Quadrant */}
+          <button
+            onClick={() => onLaserAngleChange(135)}
+            className={`p-2 rounded-xl border text-xs font-semibold transition text-left ${
+              laserAngle > 90 && laserAngle <= 180
+                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="text-[10px] uppercase font-bold text-emerald-400">Từ MT 2 (Dưới - Phải)</div>
+            <div className="font-mono text-xs text-slate-200">θ = 135° (i = 45°)</div>
+          </button>
+
+          {/* Bottom-Left Quadrant */}
+          <button
+            onClick={() => onLaserAngleChange(225)}
+            className={`p-2 rounded-xl border text-xs font-semibold transition text-left ${
+              laserAngle > 180 && laserAngle < 270
+                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="text-[10px] uppercase font-bold text-emerald-400">Từ MT 2 (Dưới - Trái)</div>
+            <div className="font-mono text-xs text-slate-200">θ = 225° (i = 45°)</div>
+          </button>
         </div>
       </div>
 
-      {/* Physics Outputs Live Badges */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {/* 3. PHYSICS OUTPUTS BADGES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Angle r */}
-        <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex flex-col justify-between">
           <span className="text-[11px] text-slate-400">{t.controls.refractedAngle}</span>
           <div className="mt-1">
             {physics.isTotalInternalReflection ? (
-              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
-                {lang === 'vi' ? 'Phản xạ TP' : 'TIR'}
+              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
+                {lang === 'vi' ? 'Phản xạ toàn phần' : 'TIR'}
               </span>
             ) : (
-              <span className="font-mono text-base font-bold text-emerald-400">
+              <span className="font-mono text-lg font-bold text-emerald-400">
                 {physics.refractedAngleDeg?.toFixed(1)}°
               </span>
             )}
@@ -285,48 +386,48 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
         </div>
 
         {/* Critical Angle igh */}
-        <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex flex-col justify-between">
           <span className="text-[11px] text-slate-400">{t.controls.criticalAngle}</span>
-          <div className="mt-1 font-mono text-base font-bold text-amber-400">
+          <div className="mt-1 font-mono text-lg font-bold text-amber-400">
             {physics.criticalAngleDeg !== null ? `${physics.criticalAngleDeg.toFixed(1)}°` : '—'}
           </div>
         </div>
 
         {/* Deviation Angle D */}
-        <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+        <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex flex-col justify-between">
           <span className="text-[11px] text-slate-400">Góc lệch D = |i - r|</span>
-          <div className="mt-1 font-mono text-base font-bold text-purple-400">
+          <div className="mt-1 font-mono text-lg font-bold text-purple-400">
             {physics.deviationAngleDeg !== null ? `${physics.deviationAngleDeg.toFixed(1)}°` : '—'}
           </div>
         </div>
 
         {/* Relative Index n21 */}
-        <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
-          <span className="text-[11px] text-slate-400">Chiết suất n₂₁ = n₂/n₁</span>
-          <div className="mt-1 font-mono text-base font-bold text-sky-400">
+        <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex flex-col justify-between">
+          <span className="text-[11px] text-slate-400">Chiết suất tỉ đối n₂₁</span>
+          <div className="mt-1 font-mono text-lg font-bold text-sky-400">
             {physics.relativeIndexN21.toFixed(3)}
           </div>
         </div>
       </div>
 
-      {/* Laser & Tools Controls Bar */}
-      <div className="pt-1 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+      {/* 4. LASER CONTROLS & WORKSPACE OVERLAYS */}
+      <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
         {/* Laser Power & Wavelength */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => onLaserActiveChange(!laserActive)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition border ${
               laserActive
                 ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-lg shadow-rose-500/10'
                 : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
             }`}
           >
-            <Power className="w-3.5 h-3.5" />
+            <Power className="w-4 h-4" />
             <span>{laserActive ? (lang === 'vi' ? 'Bật La-de' : 'Laser ON') : (lang === 'vi' ? 'Tắt La-de' : 'Laser OFF')}</span>
           </button>
 
-          {/* Laser Color picker */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          {/* Color picker */}
+          <div className="flex items-center gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
             {(Object.keys(LASER_CONFIGS) as LaserColor[]).map((cKey) => {
               const cfg = LASER_CONFIGS[cKey];
               const isSelected = laserConfig.color === cKey;
@@ -334,32 +435,32 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
                 <button
                   key={cKey}
                   onClick={() => onLaserColorChange(cKey)}
-                  className={`w-5 h-5 rounded-full transition-transform flex items-center justify-center ${
-                    isSelected ? 'scale-110 ring-2 ring-white/50' : 'opacity-70 hover:opacity-100'
+                  className={`w-6 h-6 rounded-full transition-transform flex items-center justify-center ${
+                    isSelected ? 'scale-110 ring-2 ring-white/60' : 'opacity-70 hover:opacity-100'
                   }`}
                   style={{ backgroundColor: cfg.hex }}
                   title={`${cKey} (${cfg.wavelength}nm)`}
                 >
-                  {isSelected && <Check className="w-3 h-3 text-slate-950 stroke-[3]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-slate-950 stroke-[3]" />}
                 </button>
               );
             })}
           </div>
 
-          {/* Ray vs Wave Mode */}
+          {/* Ray vs Wave */}
           <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
             <button
               onClick={() => onBeamModeChange('ray')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                beamMode === 'ray' ? 'bg-cyan-500/20 text-cyan-300 font-medium' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1 rounded-lg transition ${
+                beamMode === 'ray' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               {t.controls.beamRay}
             </button>
             <button
               onClick={() => onBeamModeChange('wave')}
-              className={`px-2.5 py-1 rounded-lg transition ${
-                beamMode === 'wave' ? 'bg-cyan-500/20 text-cyan-300 font-medium' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1 rounded-lg transition ${
+                beamMode === 'wave' ? 'bg-cyan-500/20 text-cyan-300 font-bold' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               {t.controls.beamWave}
@@ -367,94 +468,83 @@ export const SimulationControls: React.FC<SimulationControlsProps> = ({
           </div>
         </div>
 
-        {/* Overlay Switches: Protractor, Normal, Intensity Probe */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Tools */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={onToggleProtractor}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition border ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border ${
               showProtractor
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
                 : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
             }`}
-            title={t.controls.showProtractor}
           >
-            <Compass className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.controls.showProtractor}</span>
+            <Compass className="w-4 h-4" />
+            <span>Thước 360°</span>
           </button>
 
           <button
             onClick={onToggleNormal}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition border ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border ${
               showNormal
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
                 : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
             }`}
-            title={t.controls.showNormal}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">NN'</span>
+            <Layers className="w-4 h-4" />
+            <span>NN'</span>
           </button>
 
           <button
             onClick={onToggleIntensityProbe}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition border ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition border ${
               showIntensityProbe
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
                 : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
             }`}
-            title={t.controls.showIntensity}
           >
-            <Gauge className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.controls.showIntensity}</span>
+            <Gauge className="w-4 h-4" />
+            <span>{t.controls.showIntensity}</span>
           </button>
         </div>
       </div>
 
-      {/* Quick Scientific Presets Bar */}
-      <div className="pt-2 border-t border-slate-800/80">
+      {/* 5. QUICK PRESETS BAR */}
+      <div className="pt-2 border-t border-slate-800">
         <div className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
           <span>{t.controls.presets}</span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {/* Test 1 from spec */}
+        <div className="flex flex-wrap gap-2">
+          {/* Test 1: Air to Water, i = 30 */}
           <button
-            onClick={() => onApplyPreset(1.0, 1.333, 30, 'air', 'water')}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
+            onClick={() => onApplyPreset(1.0, 1.333, 330, 'air', 'water')}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
           >
-            {t.controls.presetAirWater}
+            Không khí → Nước (i = 30° ⇒ r ≈ 22.1°)
           </button>
 
-          {/* Test 2 from spec */}
+          {/* Test 2: Air to Glass, i = 45 */}
           <button
-            onClick={() => onApplyPreset(1.0, 1.5, 45, 'air', 'glass')}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
+            onClick={() => onApplyPreset(1.0, 1.5, 315, 'air', 'glass')}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
           >
-            {t.controls.presetAirGlass}
+            Không khí → Thủy tinh (i = 45° ⇒ r ≈ 28.1°)
           </button>
 
-          {/* Total Internal Reflection preset */}
+          {/* Reverse: Water to Air from below, i = 50 (TIR) */}
           <button
-            onClick={() => onApplyPreset(1.333, 1.0, 50, 'water', 'air')}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition font-medium"
+            onClick={() => onApplyPreset(1.0, 1.333, 130, 'air', 'water')}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition font-medium"
           >
-            {t.controls.presetWaterAirTir}
+            Từ dưới Nước → Không khí (i = 50° &gt; igh - Phản xạ toàn phần!)
           </button>
 
-          {/* Diamond preset */}
+          {/* Diamond to Air from below */}
           <button
-            onClick={() => onApplyPreset(2.417, 1.0, 30, 'diamond', 'air')}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border border-slate-800 transition"
+            onClick={() => onApplyPreset(1.0, 2.417, 150, 'air', 'diamond')}
+            className="text-[11px] px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-amber-300 border border-slate-800 transition"
           >
-            {t.controls.presetDiamondAir}
-          </button>
-
-          {/* Normal incidence i = 0 */}
-          <button
-            onClick={() => onApplyPreset(1.0, 1.5, 0, 'air', 'glass')}
-            className="text-[11px] px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition"
-          >
-            {t.controls.presetPerpendicular}
+            Kim cương → Không khí (igh ≈ 24.4°)
           </button>
         </div>
       </div>

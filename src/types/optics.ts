@@ -22,22 +22,28 @@ export interface LaserConfig {
 }
 
 export interface RefractionResult {
-  incidentAngleDeg: number;
+  laserAngleDeg: number; // 0 to 360 degrees around point of incidence I
+  incidentMedium: 1 | 2; // 1 = Medium 1 (top), 2 = Medium 2 (bottom)
+  nIncident: number;
+  nRefracted: number;
+  incidentAngleDeg: number; // i in [0, 90]
   incidentAngleRad: number;
-  n1: number;
-  n2: number;
-  refractedAngleDeg: number | null; // null if Total Internal Reflection
+  refractedAngleDeg: number | null; // r in [0, 90] or null if TIR
   refractedAngleRad: number | null;
-  reflectedAngleDeg: number;
-  criticalAngleDeg: number | null; // null if n1 <= n2
+  reflectedAngleDeg: number; // i' = i
+  criticalAngleDeg: number | null; // null if nIncident <= nRefracted
   isTotalInternalReflection: boolean;
   reflectionCoefficient: number; // 0 to 1
   transmissionCoefficient: number; // 0 to 1
   deviationAngleDeg: number | null; // |i - r|
+  speedIncidentKmS: number;
+  speedRefractedKmS: number;
+  relativeIndexN21: number; // nRefracted / nIncident
+  bendingDirection: 'towards_normal' | 'away_from_normal' | 'straight' | 'total_reflection';
+  n1: number;
+  n2: number;
   speed1KmS: number;
   speed2KmS: number;
-  relativeIndexN21: number;
-  bendingDirection: 'towards_normal' | 'away_from_normal' | 'straight' | 'total_reflection';
 }
 
 export type BloomLevel = 'nhan_biet' | 'thong_hieu' | 'van_dung' | 'van_dung_cao';
